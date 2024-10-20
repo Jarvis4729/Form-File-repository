@@ -1,0 +1,187 @@
+import sqlite3  # For connecting and interacting with SQLite databases
+import json  # Optional, for handling JSON strings in the database
+
+# Connect to the SQLite database (or create it if it doesn't exist)
+conn = sqlite3.connect('organization.db')
+cursor = conn.cursor()
+
+# Enable foreign key constraints
+conn.execute("PRAGMA foreign_keys = 1")
+
+# Create the necessary tables
+# Organization Root Schema
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS organization_root (
+    organization_name TEXT,
+    organization_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date_registered TEXT,
+    member_count INTEGER,
+    status TEXT, -- Values: 'Suspended', 'Inactive', 'Active'
+    organization_classification TEXT -- e.g., 'Greek', 'Academic', 'Professional'
+)
+''')
+
+# E-Board Members Schema
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS eboard_members (
+    member_key INTEGER PRIMARY KEY AUTOINCREMENT,
+    organization_id INTEGER,
+    student_id TEXT,
+    position TEXT,
+    FOREIGN KEY (organization_id) REFERENCES organization_root(organization_id)
+)
+''')
+
+# Requisition Form Schema
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS requisition_form (
+    req_form_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    form_submission_date TEXT,
+    organization_id INTEGER,
+    approval_status TEXT,
+    rsa_digital_signatures TEXT, -- Store tuple as JSON {Name, Token, Date}
+    advisor TEXT,
+    contact_person TEXT,
+    building_manager TEXT,
+    campus_police TEXT,
+    mle TEXT,
+    path_to_form_download TEXT,
+    FOREIGN KEY (organization_id) REFERENCES organization_root(organization_id)
+)
+''')
+
+# Event Description Schema
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS event_description (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    req_form_id INTEGER,
+    organization_id INTEGER,
+    path_to_form_download TEXT,
+    event_place TEXT,
+    event_time TEXT,
+    FOREIGN KEY (organization_id) REFERENCES organization_root(organization_id),
+    FOREIGN KEY (req_form_id) REFERENCES requisition_form(req_form_id)
+)
+''')
+
+# Profanity Clause Schema
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS profanity_clause (
+    clause_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    req_form_id INTEGER,
+    organization_id INTEGER,
+    path_to_form_download TEXT,
+    rsa_digital_signatures TEXT, -- Store tuple as JSON {Name, Token, Date}
+    disc_jockey TEXT,
+    advisor TEXT,
+    FOREIGN KEY (organization_id) REFERENCES organization_root(organization_id),
+    FOREIGN KEY (req_form_id) REFERENCES requisition_form(req_form_id)
+)
+''')
+
+# Credentials Schema
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS credentials (
+    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email_address TEXT,
+    encrypted_credential TEXT
+)
+''')
+
+# Insert data into Organization Root Schema
+cursor.execute('''
+INSERT INTO organization_root (organization_name, date_registered, member_count, status, organization_classification)
+VALUES 
+('Tech Innovators', '2024-01-15', 150, 'Active', 'Professional'),
+('Eco Warriors', '2023-10-22', 45, 'Inactive', 'Academic'),
+('Greek Alpha', '2024-02-05', 80, 'Suspended', 'Greek')
+''')
+
+conn.commit()
+
+# Insert data into E-Board Members Schema
+cursor.execute('''
+INSERT INTO eboard_members (organization_id, student_id, position)
+VALUES 
+(1, 'S12345', 'President'),
+(1, 'S54321', 'Treasurer'),
+(2, 'S98765', 'Secretary'),
+(3, 'S67890', 'Vice President')
+''')
+
+conn.commit()
+
+# Insert data into Requisition Form Schema
+cursor.execute('''
+INSERT INTO requisition_form (form_submission_date, organization_id, approval_status, rsa_digital_signatures, advisor, contact_person, building_manager, campus_police, mle, path_to_form_download)
+VALUES 
+('2024-03-10', 1, 'Pending', '{"Name": "John Doe", "Token": "ABC123", "Date": "2024-03-09"}', 'Dr. Smith', 'Jane Doe', 'Building 5', 'Officer Daniels', 'Jane White', '/path/to/form1.pdf'),
+('2024-04-15', 2, 'Approved', '{"Name": "Alice Green", "Token": "XYZ456", "Date": "2024-04-14"}', 'Dr. Martin', 'John Red', 'Building 7', 'Officer Brown', 'Jack Black', '/path/to/form2.pdf')
+''')
+
+conn.commit()
+
+# Insert data into Event Description Schema
+cursor.execute('''
+INSERT INTO event_description (req_form_id, organization_id, path_to_form_download, event_place, event_time)
+VALUES 
+(1, 1, '/path/to/event1.pdf', 'Auditorium', '2024-05-01 18:00'),
+(2, 2, '/path/to/event2.pdf', 'Conference Room', '2024-06-10 10:00')
+''')
+
+conn.commit()
+
+# Insert data into Profanity Clause Schema
+cursor.execute('''
+INSERT INTO profanity_clause (req_form_id, organization_id, path_to_form_download, rsa_digital_signatures, disc_jockey, advisor)
+VALUES 
+(1, 1, '/path/to/clause1.pdf', '{"Name": "DJ Storm", "Token": "DEF789", "Date": "2024-05-01"}', 'DJ Storm', 'Dr. Smith'),
+(2, 2, '/path/to/clause2.pdf', '{"Name": "DJ Thunder", "Token": "GHI101", "Date": "2024-06-10"}', 'DJ Thunder', 'Dr. Martin')
+''')
+
+conn.commit()
+
+# Insert data into Credentials Schema
+cursor.execute('''
+INSERT INTO credentials (email_address, encrypted_credential)
+VALUES 
+('admin@techinnovators.com', 'encrypted_password_123'),
+('user@ecowarriors.edu', 'encrypted_password_456')
+''')
+
+conn.commit()
+
+# Verify data from each table
+def verify_data():
+    tables = ['organization_root', 'eboard_members', 'requisition_form', 'event_description', 'profanity_clause', 'credentials']
+    for table in tables:
+        cursor.execute(f'SELECT * FROM {table}')
+        data = cursor.fetchall()
+        print(f"Data from {table}: {data}\n")
+
+verify_data()
+
+# Example multi-table query to join data from multiple tables
+cursor.execute('''
+SELECT 
+    organization_root.organization_name,
+    eboard_members.student_id,
+    eboard_members.position,
+    requisition_form.req_form_id,
+    requisition_form.form_submission_date,
+    requisition_form.approval_status
+FROM 
+    organization_root
+JOIN 
+    eboard_members ON organization_root.organization_id = eboard_members.organization_id
+JOIN 
+    requisition_form ON organization_root.organization_id = requisition_form.organization_id
+WHERE 
+    requisition_form.approval_status = 'Pending'
+''')
+
+results = cursor.fetchall()
+print(f"Multi-table query results: {results}")
+
+# Close the connection to the database
+conn.close()

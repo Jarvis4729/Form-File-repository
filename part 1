@@ -1,0 +1,78 @@
+export enum enum_active {
+    SUSPENDED,
+    INACTIVE,
+    ACTIVE
+}
+
+export enum approval_status {
+    DENIED,
+    APPROVED
+}
+
+export type signature = [
+    {
+        name: string, 
+        signed_token: string, 
+        date_entered: string | number
+    },
+]
+
+export type organizationRoot = [
+    {
+        name: string,
+        org_id: number
+        date_entered: string | number,
+        member_ct: number,
+        status: enum_active
+    }
+]
+
+export type board_members = [
+    {
+        key: number,
+        org_id: number,
+        student_id: number,
+        position: string
+    }
+]
+
+export type requisition_form = [
+    {
+        req_id: number,
+        form_date: string | number,
+        org_id: number,
+        approval_status: approval_status,
+        signatures: signature,
+        form_download?: string
+    }
+]
+
+export type event_description = [
+    {
+        event_id: number,
+        req_id: number,
+        org_id: number,
+        form_download?: string,
+        location: string,
+        time: string | number
+    }
+]
+
+export type profanity_clause = [
+    {
+        clause_id: number,
+        req_id: number,
+        org_id: number,
+        form_download?: string,
+        signatures: signature
+    }
+]
+
+export type credentials = [
+    {
+        user_id: number,
+        email: string,
+        credential: string,
+        access_level: string
+    }
+]
